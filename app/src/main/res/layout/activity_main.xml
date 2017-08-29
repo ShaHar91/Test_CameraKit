@@ -17,8 +17,8 @@
 
         <com.flurgle.camerakit.CameraView xmlns:app="http://schemas.android.com/apk/res-auto"
             android:id="@+id/camera"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
             android:layout_alignBottom="@id/overlayIv"
             android:layout_alignTop="@id/overlayIv"
             android:layout_gravity="center_horizontal"
@@ -31,12 +31,10 @@
 
         <ImageView
             android:id="@+id/overlayIv"
-
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
             android:scaleType="fitXY"
             android:src="@drawable/bross_template_square" />
-
     </RelativeLayout>
 
 

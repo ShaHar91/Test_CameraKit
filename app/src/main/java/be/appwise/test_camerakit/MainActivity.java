@@ -2,6 +2,8 @@ package be.appwise.test_camerakit;
 
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
+import android.graphics.Matrix;
 import android.os.Environment;
 import android.provider.MediaStore;
 import android.support.v7.app.AppCompatActivity;
@@ -9,21 +11,33 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.ImageButton;
+import android.widget.RelativeLayout;
 import android.widget.Toast;
 
 import com.flurgle.camerakit.CameraKit;
 import com.flurgle.camerakit.CameraListener;
 import com.flurgle.camerakit.CameraView;
+import com.vinaygaba.rubberstamp.RubberStamp;
+import com.vinaygaba.rubberstamp.RubberStampConfig;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.OutputStream;
+
+import rx.Observable;
+import rx.android.schedulers.AndroidSchedulers;
+import rx.functions.Action1;
+import rx.functions.Func0;
+import rx.schedulers.Schedulers;
+
 
 public class MainActivity extends AppCompatActivity {
 
     private CameraView camera;
     private ImageButton capturePhoto, toggleCamera;
     private boolean isTaken = true;
+    private RelativeLayout pictureLayout;
+    private RubberStamp mRubberStamp;
 
 
     //TODO: add permission request for external storage
@@ -36,6 +50,12 @@ public class MainActivity extends AppCompatActivity {
         camera = findViewById(R.id.camera);
         capturePhoto = findViewById(R.id.capturePhoto);
         toggleCamera = findViewById(R.id.toggleCamera);
+        pictureLayout = findViewById(R.id.pictureLayout);
+
+        mRubberStamp = new RubberStamp(this);
+
+//        final BitmapFactory.Options options = new BitmapFactory.Options();
+//        options.inMutable = true;
 
         capturePhoto.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -45,8 +65,18 @@ public class MainActivity extends AppCompatActivity {
                     @Override
                     public void onPictureTaken(byte[] jpeg) {
                         super.onPictureTaken(jpeg);
-                        OutputStream fOut = null;
+
                         Bitmap bitmap = BitmapFactory.decodeByteArray(jpeg, 0, jpeg.length);
+
+                        BitmapFactory.Options options = new BitmapFactory.Options();
+                        options.inJustDecodeBounds = true;
+                        options.inMutable = true;
+
+//                        BitmapFactory.decodeByteArray(jpeg, 0, jpeg.length, options);
+
+                        Bitmap overlay = BitmapFactory.decodeResource(getResources(), R.drawable.bross_template_square);
+
+                        OutputStream fOut = null;
 
                         String path = Environment.getExternalStorageDirectory().toString();
                         String ts = String.valueOf(System.currentTimeMillis() / 1000);
@@ -60,7 +90,7 @@ public class MainActivity extends AppCompatActivity {
                         try {
                             fOut = new FileOutputStream(file);
 
-                            bitmap.compress(Bitmap.CompressFormat.JPEG, 85, fOut);
+                            overlay(bitmap, overlay).compress(Bitmap.CompressFormat.JPEG, 85, fOut);
                             fOut.flush();
                             fOut.close();
 
@@ -99,7 +129,19 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         });
+    }
 
+    private Bitmap overlay(Bitmap bmp1, Bitmap bmp2) {
+        Bitmap bmCanvas = Bitmap.createBitmap(bmp1.getWidth(), bmp1.getHeight(), bmp1.getConfig());
+
+        Bitmap bmOverlay = Bitmap.createScaledBitmap(bmp2, bmp1.getWidth(), bmp1.getHeight(), false);
+        Canvas canvas = new Canvas(bmCanvas);
+
+        canvas.drawBitmap(bmp1, new Matrix(), null);
+
+        canvas.drawBitmap(bmOverlay, new Matrix(), null);
+
+        return bmCanvas;
     }
 
     @Override
@@ -112,5 +154,15 @@ public class MainActivity extends AppCompatActivity {
     protected void onPause() {
         camera.stop();
         super.onPause();
+    }
+
+    public Observable<Bitmap> getBitmap(final RubberStamp rubberStamp,
+                                        final RubberStampConfig config) {
+        return Observable.defer(new Func0<Observable<Bitmap>>() {
+            @Override
+            public Observable<Bitmap> call() {
+                return Observable.just(rubberStamp.addStamp(config));
+            }
+        });
     }
 }
