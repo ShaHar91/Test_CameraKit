@@ -1,12 +1,13 @@
 package be.appwise.test_camerakit;
 
 import android.Manifest;
-import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Matrix;
+import android.media.ExifInterface;
 import android.media.MediaScannerConnection;
+import android.os.AsyncTask;
 import android.os.Environment;
 import android.support.annotation.NonNull;
 import android.support.v4.app.Fragment;
@@ -17,7 +18,6 @@ import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
-import android.view.Surface;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageButton;
@@ -42,13 +42,17 @@ import java.io.OutputStream;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 
+
 public class MainActivity extends AppCompatActivity implements RuntimePermissionListener {
 
     private CameraView camera;
-    private ImageButton capturePhoto, toggleCamera;
+    private ImageButton capturePhoto, toggleCamera, toggleFlash;
     private boolean isTaken = true;
     private SectionsPagerAdapter mSectionsPagerAdapter;
     private ViewPager mViewPager;
+    private static final String PICTURE_DETAIL = "PICTURE_DETAIL";
+
+    private Bitmap bitmap;
 
     private int rotation;
 
@@ -70,7 +74,6 @@ public class MainActivity extends AppCompatActivity implements RuntimePermission
         mViewPager.setAdapter(mSectionsPagerAdapter);
 
         camera = findViewById(R.id.camera);
-
         toggleCamera = findViewById(R.id.toggleCamera);
 
         toggleCamera.setOnClickListener(new View.OnClickListener() {
@@ -88,10 +91,31 @@ public class MainActivity extends AppCompatActivity implements RuntimePermission
             }
         });
 
+        toggleFlash = findViewById(R.id.toggleFlash);
+        toggleFlash.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                switch (camera.toggleFlash()) {
+                    case CameraKit.Constants.FLASH_ON:
+                        Toast.makeText(MainActivity.this, "Flash on!", Toast.LENGTH_SHORT).show();
+                        break;
+
+                    case CameraKit.Constants.FLASH_OFF:
+                        Toast.makeText(MainActivity.this, "Flash off!", Toast.LENGTH_SHORT).show();
+                        break;
+
+                    case CameraKit.Constants.FLASH_AUTO:
+                        Toast.makeText(MainActivity.this, "Flash auto!", Toast.LENGTH_SHORT).show();
+                        break;
+                }
+            }
+
+        });
+
         setViews();
     }
 
-    private Bitmap overlay(Bitmap bmp1, Bitmap bmp2) {
+    private Bitmap overlayMethod(Bitmap bmp1, Bitmap bmp2) {
         Bitmap bmCanvas = Bitmap.createBitmap(bmp1.getWidth(), bmp1.getHeight(), bmp1.getConfig());
 
         Bitmap bmOverlay = Bitmap.createScaledBitmap(bmp2, bmp1.getWidth(), bmp1.getHeight(), false);
@@ -130,60 +154,37 @@ public class MainActivity extends AppCompatActivity implements RuntimePermission
                 camera.setCameraListener(new CameraListener() {
                     @Override
                     public void onPictureTaken(byte[] jpeg) {
-                        super.onPictureTaken(jpeg);
 
-                        Bitmap bitmap = BitmapFactory.decodeByteArray(jpeg, 0, jpeg.length);
+                        bitmap = BitmapFactory.decodeByteArray(jpeg, Exif.getOrientation(jpeg), jpeg.length);
+
+                        Log.v(PICTURE_DETAIL, bitmap.getHeight() + " width: " + bitmap.getWidth());
 
                         BitmapFactory.Options options = new BitmapFactory.Options();
                         options.inJustDecodeBounds = true;
                         options.inMutable = true;
 
                         int page = mViewPager.getCurrentItem();
-                        Bitmap overlay;
                         switch (page) {
                             case 0:
-                                overlay = setOverlay(R.drawable.bross_template);
+                                new PictureTask().execute(R.drawable.bross_template);
                                 break;
                             case 1:
-                                overlay = setOverlay(R.drawable.bross_template_square);
+                                new PictureTask().execute(R.drawable.bross_template_square);
                                 break;
                             case 2:
-                                overlay = setOverlay(R.drawable.signmania_frame);
+                                new PictureTask().execute(R.drawable.signmania_frame);
                                 break;
                             case 3:
-                                overlay = setOverlay(R.drawable.signmania_frame_square);
+                                new PictureTask().execute(R.drawable.signmania_frame_square);
                                 break;
                             default:
-                                overlay = setOverlay(R.drawable.bross_template_square);
+                                new PictureTask().execute(R.drawable.bross_template_square);
                                 break;
                         }
 
-                        Log.v("PICTURE_DETAIL", mViewPager.getCurrentItem() + "");
+                        Log.v(PICTURE_DETAIL, mViewPager.getCurrentItem() + "");
 
-                        OutputStream fOut;
 
-                        String path = Environment.getExternalStorageDirectory().toString();
-                        String ts = String.valueOf(System.currentTimeMillis() / 1000);
-
-                        File fileMk = new File(path + "/Pictures/");
-                        if (!fileMk.exists()) {
-                            fileMk.mkdirs();
-                        }
-
-                        File file = new File(path + "/Pictures/", ts + ".jpeg");
-                        try {
-                            fOut = new FileOutputStream(file);
-
-                            overlay(bitmap, overlay).compress(Bitmap.CompressFormat.JPEG, 85, fOut);
-                            fOut.flush();
-                            fOut.close();
-
-                            MediaScannerConnection.scanFile(MainActivity.this, new String[]{file.getPath()}, new String[]{"image/jpeg"}, null);
-                            isTaken = true;
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                            isTaken = false;
-                        }
                     }
                 });
                 camera.captureImage();
@@ -200,17 +201,66 @@ public class MainActivity extends AppCompatActivity implements RuntimePermission
         });
     }
 
-    private Bitmap setOverlay(int drawable) {
-        Bitmap temp = null;
+    private class PictureTask extends AsyncTask<Integer, Void, Bitmap> {
 
-        try {
-            temp = Glide.with(MainActivity.this).asBitmap().load(drawable).into(camera.getWidth(), camera.getHeight()).get();
-        } catch (InterruptedException | ExecutionException e) {
-            e.printStackTrace();
+        @Override
+        protected Bitmap doInBackground(Integer... drawables) {
+            Bitmap temp = null;
+
+            try {
+                temp = Glide.with(MainActivity.this).asBitmap().load(drawables[0]).into(camera.getWidth(), camera.getHeight()).get();
+            } catch (InterruptedException | ExecutionException e) {
+                e.printStackTrace();
+            }
+            return temp;
         }
 
-        return temp;
+        @Override
+        protected void onPostExecute(Bitmap bitmapAsync) {
+            if (bitmapAsync == null) {
+                return;
+            }
+
+            OutputStream fOut;
+
+            String path = Environment.getExternalStorageDirectory().toString();
+            String ts = String.valueOf(System.currentTimeMillis() / 1000);
+
+            File fileMk = new File(path + "/Pictures/");
+            if (!fileMk.exists()) {
+                fileMk.mkdirs();
+            }
+
+            File file = new File(path + "/Pictures/", ts + ".jpeg");
+
+            try {
+                fOut = new FileOutputStream(file);
+
+                overlayMethod(bitmap, bitmapAsync).compress(Bitmap.CompressFormat.JPEG, 85, fOut);
+                fOut.flush();
+                fOut.close();
+
+                MediaScannerConnection.scanFile(MainActivity.this, new String[]{file.getPath()}, new String[]{"image/jpeg"}, null);
+                isTaken = true;
+            } catch (Exception e) {
+                e.printStackTrace();
+                Log.e(PICTURE_DETAIL, e.toString());
+                isTaken = false;
+            }
+        }
     }
+
+//    private Bitmap setOverlay(int drawable) {
+//        Bitmap temp = null;
+//
+//        try {
+//            temp = Glide.with(MainActivity.this).asBitmap().load(drawable).into(camera.getWidth(), camera.getHeight()).get();
+//        } catch (InterruptedException | ExecutionException e) {
+//            e.printStackTrace();
+//        }
+//
+//        return temp;
+//    }
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
@@ -313,6 +363,7 @@ public class MainActivity extends AppCompatActivity implements RuntimePermission
         public SectionsPagerAdapter(FragmentManager fm) {
             super(fm);
         }
+
         @Override
         public Fragment getItem(int position) {
             // getItem is called to instantiate the fragment for the given page.
