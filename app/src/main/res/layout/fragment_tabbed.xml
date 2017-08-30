@@ -1,0 +1,15 @@
+<android.support.constraint.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/constraintLayout"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context="be.appwise.test_camerakit.TabbedActivity$PlaceholderFragment">
+
+    <ImageView
+        android:id="@+id/overlayIv"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="fitXY"
+        android:src="@drawable/signmania_frame_square"/>
+</android.support.constraint.ConstraintLayout>

@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/activity_main"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main_content"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@android:color/white"
-    android:descendantFocusability="beforeDescendants"
-    android:focusable="true"
-    android:focusableInTouchMode="true"
-    android:orientation="vertical">
+    android:fitsSystemWindows="true"
+    tools:context="be.appwise.test_camerakit.TabbedActivity">
+
 
     <RelativeLayout
         android:id="@+id/pictureLayout"
@@ -25,16 +25,16 @@
             android:adjustViewBounds="true"
             app:ckCropOutput="true"
             app:ckFacing="back"
-            app:ckFocus="tapWithMarker"
+            app:ckFocus="continuous"
             app:ckJpegQuality="100"
             app:ckMethod="still" />
 
-        <ImageView
-            android:id="@+id/overlayIv"
+        <android.support.v4.view.ViewPager
+            android:id="@+id/container"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:scaleType="fitXY"
-            android:src="@drawable/bross_template_square" />
+            app:layout_behavior="@string/appbar_scrolling_view_behavior" />
+
     </RelativeLayout>
 
 
@@ -43,6 +43,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_alignParentBottom="true"
+        android:background="@color/colorPrimary"
         android:orientation="horizontal"
         android:weightSum="3">
 
@@ -90,4 +91,3 @@
     </LinearLayout>
 
 </RelativeLayout>
-
